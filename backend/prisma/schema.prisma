@@ -1,0 +1,626 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String // SUPER_ADMIN, ADMIN, EMPLOYEE
+  status    String // ACTIVE, INACTIVE, PENDING, REJECTED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  admin          User?           @relation("AdminToEmployee", fields: [adminId], references: [id])
+  adminId        String?
+  employees      User[]          @relation("AdminToEmployee")
+  // ✅ Relation to EmployeeMaster (1-to-1)
+  employeeMaster EmployeeMaster? @relation("UserToEmployee")
+
+  // Master data relations
+  hoardings       Hoarding[]
+  labours         Labour[]
+  employeeMasters EmployeeMaster[] // ✅ Renamed to avoid conflict
+  landlords       Landlord[]
+  clients         Client[]
+  agencies        Agency[]
+  creditors       Creditor[]
+  printers        Printer[] // ➕ Added relation for Printer Master
+  vendors         Vendor[]
+  campaigns       Campaign[]
+  enquiries       Enquiry[]
+  quotations      Quotation[]
+  // 👇 Backward relation to Designer
+  designers       Designer[]
+  paymentVouchers PaymentVoucher[]
+  receiptVouchers ReceiptVoucher[]
+  journalVouchers JournalVoucher[]
+  contraVouchers  ContraVoucher[]
+  debitNotes      DebitNote[]
+  creditNotes     CreditNote[]
+  adminProfile    AdminProfile[]
+  // ✅ Back relation for uploaded assets
+  uploadedAssets  CampaignAssets[] @relation("UserUploadedAssets")
+  bills           Bill[]
+  // 🎯 Task Management relations
+  createdTasks    Task[]           @relation("TaskCreator")
+  assignedTasks   Task[]           @relation("TaskAssignee")
+  taskUpdates     TaskUpdate[]
+}
+
+model Hoarding {
+  id                     String  @id @default(uuid())
+  location               String
+  latitude               Float?  // 📍 Google Maps latitude
+  longitude              Float?  // 📍 Google Maps longitude
+  width                  Float
+  height                 Float
+  totalSqFt              Float
+  illumination           Boolean
+  displayChargesPerMonth Float
+  oneTimePrintingCost    Float
+  oneTimeMountingCost    Float
+  totalCost              Float
+
+  availability Availability
+  isAvailable  Boolean      @default(true)
+  bookedTill   DateTime?
+
+  hoardingType HoardingType @default(Hoarding)
+  mediaType    String?
+  status       String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  admin      User      @relation(fields: [adminId], references: [id])
+  adminId    String
+  landlord   Landlord? @relation(fields: [landlordId], references: [id])
+  landlordId String?
+
+  campaignHoardings CampaignHoarding[] @relation("HoardingToCampaignHoarding") // 👈 Must match
+  tasks             Task[] // 🎯 Tasks related to this hoarding
+}
+
+enum Availability {
+  IMMEDIATELY
+  FURTHER_DATE
+}
+
+enum HoardingType {
+  Hoarding
+  LED
+  PromotionVehicle
+  BusQueShelter
+  BusBranding
+  PoleKiosk
+}
+
+model Labour {
+  id          String     @id @default(uuid())
+  personName  String
+  companyName String
+  type        String
+  labourType  LabourType @default(Fabricator) // ➕ Added labourType
+  address     String
+  gstNo       String
+  bankDetails String
+  panNumber   String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  admin   User   @relation(fields: [adminId], references: [id])
+  adminId String
+}
+
+enum LabourType {
+  Fabricator
+  Mounter
+}
+
+model EmployeeMaster {
+  id            String   @id @default(uuid())
+  employeeName  String
+  officialEmail String
+  personalEmail String
+  address       String
+  panNumber     String
+  bankDetails   String
+  salary        Float
+  joiningDate   DateTime
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  admin   User   @relation(fields: [adminId], references: [id])
+  adminId String
+
+  // 🔗 Relation with permissions
+  permissions EmployeePermission[]
+
+  userId    String     @unique
+  user      User       @relation("UserToEmployee", fields: [userId], references: [id])
+  // ✅ FIX: same relation name used here
+  campaigns Campaign[] @relation("EmployeeCampaigns")
+}
+
+model Landlord {
+  id             String   @id @default(uuid())
+  landlordName   String
+  address        String
+  bankDetails    String
+  rentAmount     Float
+  hikeAfterYears Int
+  hikePercentage Float
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  admin        User       @relation(fields: [adminId], references: [id])
+  adminId      String
+  siteLocation Hoarding[] // Relation to Hoarding (siteLocation)
+}
+
+model Client {
+  id                  String   @id @default(uuid())
+  name                String
+  companyName         String
+  address             String
+  gstNo               String
+  panNo               String
+  contactPerson       String
+  contactPersonNumber String
+  whatsappNumber      String
+  landlineNumber      String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  // Relations
+  admin   User   @relation(fields: [adminId], references: [id])
+  adminId String
+}
+
+model Agency {
+  id                  String   @id @default(uuid())
+  name                String
+  companyName         String
+  address             String
+  gstNo               String
+  panNo               String
+  contactPerson       String
+  contactPersonNumber String
+  whatsappNumber      String
+  landlineNumber      String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  // Relations
+  admin   User   @relation(fields: [adminId], references: [id])
+  adminId String
+}
+
+model Creditor {
+  id                  String   @id @default(uuid())
+  name                String
+  companyName         String
+  address             String
+  gstNo               String
+  panNo               String
+  contactPerson       String
+  contactPersonNumber String
+  whatsappNumber      String
+  landlineNumber      String
+  bankDetails         String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  // Relations
+  admin   User   @relation(fields: [adminId], references: [id])
+  adminId String
+}
+
+enum EnquiryType {
+  Agency
+  Client
+}
+
+enum MediaRequirement {
+  Hoarding
+  LED
+  PromotionVehicle
+  BusQueShelter
+  BusBranding
+  PoleKiosk
+  ALL
+}
+
+enum ProgressStatus {
+  NotStarted
+  InProgress
+  Completed
+}
+
+model Enquiry {
+  id                 Int              @id @default(autoincrement())
+  name               String
+  contactNumber      String
+  whatsappNumber     String
+  email              String
+  companyName        String
+  type               EnquiryType
+  mediaRequirement   MediaRequirement
+  locationState      String
+  locationCity       String
+  manualLocation     String?
+  tentativeStartDate DateTime
+  tentativeDuration  String
+  progressStatus     ProgressStatus   @default(NotStarted)
+  createdAt          DateTime         @default(now())
+  quotations         Quotation[]
+  adminId            String?
+  admin              User?            @relation(fields: [adminId], references: [id])
+}
+
+model Quotation {
+  id          Int      @id @default(autoincrement())
+  enquiry     Enquiry  @relation(fields: [enquiryId], references: [id])
+  enquiryId   Int
+  hoardingIds String[] // Store selected hoarding IDs as a list of strings
+  items       Json
+  total       Float
+  createdAt   DateTime @default(now())
+  adminId     String
+  admin       User     @relation(fields: [adminId], references: [id])
+}
+
+model Printer {
+  id          String   @id @default(uuid())
+  personName  String
+  companyName String
+  type        String   @default("printer")
+  address     String
+  gstNo       String
+  bankDetails String
+  panNumber   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  admin   User   @relation(fields: [adminId], references: [id])
+  adminId String
+}
+
+model Designer {
+  id          String   @id @default(uuid())
+  adminId     String
+  personName  String
+  companyName String
+  type        String   @default("designer")
+  address     String
+  gstNo       String
+  bankDetails String
+  panNumber   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // relation
+  admin User @relation(fields: [adminId], references: [id])
+}
+
+// --- Campaign Management Models ---
+model Vendor {
+  id            Int        @id @default(autoincrement())
+  name          String
+  companyName   String
+  type          String
+  address       String
+  city          String
+  state         String
+  contactPerson String
+  mobile        String
+  email         String
+  gstNumber     String
+  panNumber     String
+  bankName      String
+  branch        String
+  accountNumber String
+  ifscCode      String
+  aadharNumber  String
+  notes         String?
+  createdAt     DateTime   @default(now())
+  campaigns     Campaign[]
+  adminId       String
+  admin         User       @relation(fields: [adminId], references: [id])
+}
+
+model Campaign {
+  id             Int      @id @default(autoincrement())
+  campaignNumber String   @unique
+  customerName   String
+  phoneNumber    String
+  vendorId       Int
+  startDate      DateTime
+  endDate        DateTime
+  status         String
+  purchaseOrder  String?
+  createdAt      DateTime @default(now())
+
+  vendor Vendor           @relation(fields: [vendorId], references: [id])
+  assets CampaignAssets[]
+
+  hoardings CampaignHoarding[] @relation("CampaignToCampaignHoarding")
+
+  adminId String
+  admin   User   @relation(fields: [adminId], references: [id])
+
+  // ✅ FIX: added relation name here
+  assignedToId String?
+  assignedTo   EmployeeMaster? @relation("EmployeeCampaigns", fields: [assignedToId], references: [id])
+
+  bills Bill[]
+  tasks Task[] // 🎯 Tasks related to this campaign
+}
+
+model CampaignAssets {
+  id         Int      @id @default(autoincrement())
+  campaignId Int
+  type       String // e.g., Designing, Printing, etc.
+  fileUrl    String
+  uploadedAt DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id])
+
+  // ✅ Relation to User (uploaded by mounter/employee/admin)
+  uploadedById String?
+  uploadedBy   User?   @relation("UserUploadedAssets", fields: [uploadedById], references: [id])
+}
+
+enum CampaignStatus {
+  DRAFT
+  PENDING_ASSIGNMENT
+  ASSIGNED
+  IN_PROGRESS // mounting/in-progress
+  COMPLETED
+  CANCELLED
+}
+
+model CampaignHoarding {
+  id Int @id @default(autoincrement())
+
+  campaignId Int
+  campaign   Campaign @relation("CampaignToCampaignHoarding", fields: [campaignId], references: [id])
+
+  hoardingId String
+  hoarding   Hoarding @relation("HoardingToCampaignHoarding", fields: [hoardingId], references: [id])
+
+  startDate DateTime
+  endDate   DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model PaymentVoucher {
+  id          String      @id @default(uuid())
+  date        DateTime
+  partyName   String
+  paymentMode PaymentMode
+  narration   String?
+  adminId     String
+  admin       User        @relation(fields: [adminId], references: [id])
+  createdAt   DateTime    @default(now())
+}
+
+model ReceiptVoucher {
+  id          String      @id @default(uuid())
+  date        DateTime
+  partyName   String
+  paymentMode PaymentMode
+  narration   String?
+  adminId     String
+  admin       User        @relation(fields: [adminId], references: [id])
+  createdAt   DateTime    @default(now())
+}
+
+model JournalVoucher {
+  id        String      @id @default(uuid())
+  date      DateTime
+  partyName String
+  amount    Float
+  type      DebitCredit
+  narration String?
+  adminId   String
+  admin     User        @relation(fields: [adminId], references: [id])
+  createdAt DateTime    @default(now())
+}
+
+model ContraVoucher {
+  id          String      @id @default(uuid())
+  date        DateTime
+  paymentMode PaymentMode
+  narration   String?
+  adminId     String
+  admin       User        @relation(fields: [adminId], references: [id])
+  createdAt   DateTime    @default(now())
+}
+
+model DebitNote {
+  id        String      @id @default(uuid())
+  date      DateTime
+  partyName String
+  amount    Float
+  type      DebitCredit
+  narration String?
+  adminId   String
+  admin     User        @relation(fields: [adminId], references: [id])
+  createdAt DateTime    @default(now())
+}
+
+model CreditNote {
+  id        String      @id @default(uuid())
+  date      DateTime
+  partyName String
+  amount    Float
+  type      DebitCredit
+  narration String?
+  adminId   String
+  admin     User        @relation(fields: [adminId], references: [id])
+  createdAt DateTime    @default(now())
+}
+
+model EmployeePermission {
+  id         String         @id @default(cuid())
+  employee   EmployeeMaster @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId String
+
+  module    String // e.g. "masters", "campaigns", "accounts"
+  canCreate Boolean @default(false)
+  canRead   Boolean @default(false)
+  canUpdate Boolean @default(false)
+  canDelete Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([employeeId, module]) // prevent duplicate entries for same employee & module
+}
+
+model AdminProfile {
+  id           Int     @id @default(autoincrement())
+  adminId      String  @unique
+  companyName  String
+  gstNo        String?
+  terms        String?
+  instructions String?
+  logoUrl      String?
+
+  admin User @relation(fields: [adminId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum PaymentMode {
+  CASH
+  CHEQUE
+  OTHER
+}
+
+enum DebitCredit {
+  DEBIT
+  CREDIT
+}
+
+model Bill {
+  id             Int      @id @default(autoincrement())
+  billNumber     String   @unique
+  campaignId     Int
+  campaign       Campaign @relation(fields: [campaignId], references: [id])
+  adminId        String
+  admin          User     @relation(fields: [adminId], references: [id])
+
+  // Company details from admin profile
+  companyName    String?
+  gstNo          String?
+  terms          String?
+  instructions   String?
+
+  // Campaign details
+  customerName   String
+  customerPhone  String
+  vendorName     String
+  campaignNumber String
+  startDate      DateTime
+  endDate        DateTime
+
+  // Hoarding details (JSON for flexibility)
+  hoardings      Json
+
+  // Financial details
+  subtotal       Float
+  taxAmount      Float    @default(0)
+  totalAmount    Float
+
+  // Status and approval
+  status         BillStatus @default(PENDING)
+  approvedAt     DateTime?
+  approvedBy     String?
+  rejectionReason String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+enum BillStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// 🎯 Task Management Models
+model Task {
+  id          String       @id @default(uuid())
+  title       String
+  description String?
+  priority    TaskPriority @default(MEDIUM)
+  status      TaskStatus   @default(TODO)
+  dueDate     DateTime?
+  
+  // Relations
+  createdBy   User     @relation("TaskCreator", fields: [createdById], references: [id])
+  createdById String
+  
+  assignedTo   User?    @relation("TaskAssignee", fields: [assignedToId], references: [id])
+  assignedToId String?
+  
+  // Optional campaign or hoarding relation
+  campaign     Campaign? @relation(fields: [campaignId], references: [id])
+  campaignId   Int?
+  
+  hoarding     Hoarding? @relation(fields: [hoardingId], references: [id])
+  hoardingId   String?
+  
+  // Task updates
+  updates      TaskUpdate[]
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  completedAt  DateTime?
+}
+
+model TaskUpdate {
+  id        String   @id @default(uuid())
+  comment   String
+  status    TaskStatus?
+  
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId    String
+  
+  updatedBy User     @relation(fields: [userId], references: [id])
+  userId    String
+  
+  createdAt DateTime @default(now())
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  COMPLETED
+  CANCELLED
+}
