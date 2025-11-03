@@ -23,7 +23,10 @@ app.use((req, res, next) => {
 });
 
 // Middleware
-app.use(cors({ origin: 'https://bharatiexpoads-1.onrender.com' , methods: ['GET', 'POST', 'PUT', 'DELETE'] }));
+app.use(cors({   origin: [
+    'https://bharatiexpoads-1.onrender.com',
+    'https://bharati-expoads.vercel.app'
+  ] , methods: ['GET', 'POST', 'PUT', 'DELETE'] }));
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 const adminProfileRoutes = require('./routes/adminProfile');
